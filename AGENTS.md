@@ -257,3 +257,70 @@
   - `node --import tsx scripts/release-check.ts`
   - `pnpm release:check`
   - `pnpm test:install:smoke` or `OPENCLAW_INSTALL_SMOKE_SKIP_NONROOT=1 pnpm test:install:smoke` for non-root smoke path.
+
+## Docker Setup (This Fork)
+
+This repository includes Docker-specific customizations for running OpenClaw in a containerized environment with SSH tunnel access to the Control UI.
+
+### Files Added/Modified
+
+| File | Purpose |
+|------|---------|
+| `start-openclaw-docker.sh` | Main startup script that handles initialization, configuration, and health checks |
+| `docker-compose.override.yml` | Build configuration for vim/jq and exec tool environment variables |
+
+### Quick Start
+
+```bash
+# Start OpenClaw with all configurations applied
+./start-openclaw-docker.sh
+
+# Or with custom port
+OPENCLAW_GATEWAY_PORT=8080 ./start-openclaw-docker.sh
+```
+
+### What the Script Does
+
+1. **Docker validation** - Checks Docker and Docker Compose are available
+2. **Directory setup** - Creates `~/.openclaw` structure with proper permissions
+3. **Control UI configuration** - Sets `gateway.controlUi.allowedOrigins` for SSH tunnel access
+4. **Exec tool setup** - Configures `tools.exec.host=gateway` with allowlist security
+5. **Exec approvals** - Creates `~/.openclaw/exec-approvals.json` with safe defaults
+6. **Image build** - Builds with `vim` and `jq` pre-installed
+7. **Health check** - Waits for gateway to report healthy before completing
+
+### Accessing Control UI via SSH Tunnel
+
+From your local machine:
+```bash
+ssh -L 18789:localhost:18789 user@<server-ip>
+# Then open http://localhost:18789 in your browser
+```
+
+### Exec Tool Configuration
+
+The exec tool is pre-configured for Docker with:
+- **host**: `gateway` (runs commands on the gateway host)
+- **security**: `allowlist` (only approved commands allowed)
+- **ask**: `on-miss` (prompts for unknown commands)
+
+Default allowed commands: `ls`, `cat`, `head`, `tail`, `grep`, `jq`, `cut`, `awk`, `sed`, `wc`, `sort`, `uniq`, `find`, `df`, `du`, `ps`, `curl`, `git`, `docker`, `which`, `pwd`, `echo`, `date`, `hostname`
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENCLAW_CONFIG_DIR` | `~/.openclaw` | Configuration directory |
+| `OPENCLAW_WORKSPACE_DIR` | `~/.openclaw/workspace` | Workspace directory |
+| `OPENCLAW_GATEWAY_PORT` | `18789` | Gateway port |
+| `OPENCLAW_GATEWAY_BIND` | `lan` | Bind address (loopback or lan) |
+| `OPENCLAW_IMAGE` | `openclaw:local` | Docker image to use |
+
+### Moving to Another Server
+
+Copy the project files and run the startup script:
+```bash
+./start-openclaw-docker.sh
+```
+
+The script will automatically rebuild the image with vim/jq and configure everything.

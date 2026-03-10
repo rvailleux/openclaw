@@ -9,6 +9,9 @@ services:
       CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY:-}
       CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY:-}
       CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE:-}
+      TRELLO_API_KEY: ${TRELLO_API_KEY:-bb01d8aaac10a425894cf0484b797b38}
+      TRELLO_TOKEN: ${TRELLO_TOKEN:-b0aa6f6c510df20be8925f40ff54220cd77c3a977694e5675405d19f4417a4d9}
+      EDITOR: /usr/bin/vim     
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace

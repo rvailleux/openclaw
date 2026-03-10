@@ -1,0 +1,29 @@
+# Permanent configuration override
+# This file ensures vim and jq are always installed in the image
+# It travels with the project files to any server
+
+services:
+  openclaw-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        OPENCLAW_DOCKER_APT_PACKAGES: "vim jq"
+    environment:
+      - EDITOR=/usr/bin/vim
+      # Exec tool configuration for Docker
+      # Host execution is used since sandbox is not available in standard Docker
+      - OPENCLAW_EXEC_HOST=gateway
+      - OPENCLAW_EXEC_SECURITY=allowlist
+      - OPENCLAW_EXEC_ASK=on-miss
+    # Add extra tools commonly needed for exec operations
+    # Note: Build with OPENCLAW_DOCKER_APT_PACKAGES to add more tools
+
+  openclaw-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        OPENCLAW_DOCKER_APT_PACKAGES: "vim jq"
+    environment:
+      - EDITOR=/usr/bin/vim
