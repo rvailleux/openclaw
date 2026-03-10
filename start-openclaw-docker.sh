@@ -6,6 +6,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
+COMPOSE_OVERRIDE="$SCRIPT_DIR/docker-compose.override.yml"
+
+# Build compose command with override if it exists
+if [[ -f "$COMPOSE_OVERRIDE" ]]; then
+  COMPOSE_CMD="docker compose -f $COMPOSE_FILE -f $COMPOSE_OVERRIDE"
+else
+  COMPOSE_CMD="docker compose -f $COMPOSE_FILE"
+fi
 
 # Configuration with defaults
 OPENCLAW_CONFIG_DIR="${OPENCLAW_CONFIG_DIR:-$HOME/.openclaw}"
@@ -170,7 +178,7 @@ ensure_allowed_origins() {
   log_info "Setting Control UI allowedOrigins for SSH tunnel access..."
 
   # Set the allowed origins using the CLI container
-  docker compose -f "$COMPOSE_FILE" run --rm \
+  $COMPOSE_CMD run --rm \
     -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
     openclaw-cli \
     config set gateway.controlUi.allowedOrigins "[\"$tunnel_origin\"]" --strict-json >/dev/null 2>&1 || {
@@ -194,21 +202,21 @@ ensure_exec_config() {
   log_info "Configuring exec tool for Docker environment..."
 
   # Configure exec for gateway host execution with allowlist security
-  docker compose -f "$COMPOSE_FILE" run --rm \
+  $COMPOSE_CMD run --rm \
     -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
     openclaw-cli \
     config set tools.exec.host gateway >/dev/null 2>&1 || {
     log_warn "Could not set exec.host"
   }
 
-  docker compose -f "$COMPOSE_FILE" run --rm \
+  $COMPOSE_CMD run --rm \
     -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
     openclaw-cli \
     config set tools.exec.security allowlist >/dev/null 2>&1 || {
     log_warn "Could not set exec.security"
   }
 
-  docker compose -f "$COMPOSE_FILE" run --rm \
+  $COMPOSE_CMD run --rm \
     -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
     openclaw-cli \
     config set tools.exec.ask on-miss >/dev/null 2>&1 || {
@@ -222,7 +230,7 @@ fix_permissions() {
   log_info "Fixing directory permissions..."
 
   # Run a temporary container to fix permissions for the node user (uid 1000)
-  docker compose -f "$COMPOSE_FILE" run --rm --user root --entrypoint sh openclaw-cli -c \
+  $COMPOSE_CMD run --rm --user root --entrypoint sh openclaw-cli -c \
     'find /home/node/.openclaw -xdev -exec chown node:node {} + 2>/dev/null || true' >/dev/null 2>&1 || {
     log_warn "Could not fix permissions automatically"
   }
@@ -245,12 +253,12 @@ start_gateway() {
     # Check if image needs building (has override build config or image doesn't exist)
     if [[ -f "$SCRIPT_DIR/docker-compose.override.yml" ]] || ! docker image inspect openclaw:local >/dev/null 2>&1; then
       log_info "Building image with custom packages (vim, jq, etc.)..."
-      docker compose -f "$COMPOSE_FILE" build openclaw-gateway
+      $COMPOSE_CMD build openclaw-gateway
     fi
   fi
 
   # Start the gateway
-  docker compose -f "$COMPOSE_FILE" up -d openclaw-gateway
+  $COMPOSE_CMD up -d openclaw-gateway
 
   # Wait for health check
   log_info "Waiting for gateway to be healthy..."
@@ -258,11 +266,11 @@ start_gateway() {
   local max_attempts=30
 
   while [[ $attempts -lt $max_attempts ]]; do
-    if docker compose -f "$COMPOSE_FILE" ps openclaw-gateway | grep -q "healthy"; then
+    if $COMPOSE_CMD ps openclaw-gateway | grep -q "healthy"; then
       log_success "Gateway is healthy!"
       return 0
     fi
-    if docker compose -f "$COMPOSE_FILE" ps openclaw-gateway | grep -q "unhealthy"; then
+    if $COMPOSE_CMD ps openclaw-gateway | grep -q "unhealthy"; then
       fail "Gateway is unhealthy. Check logs with: docker compose -f $COMPOSE_FILE logs openclaw-gateway"
     fi
     sleep 1
@@ -299,14 +307,26 @@ print_access_info() {
   echo "  Exec tool: enabled (gateway host, allowlist security)"
   echo ""
   echo -e "${BLUE}Useful Commands:${NC}"
-  echo "  View logs:     docker compose -f $COMPOSE_FILE logs -f openclaw-gateway"
-  echo "  Stop gateway:  docker compose -f $COMPOSE_FILE down"
-  echo "  CLI commands:  docker compose -f $COMPOSE_FILE run --rm openclaw-cli <command>"
+  if [[ -f "$COMPOSE_OVERRIDE" ]]; then
+    echo "  View logs:     docker compose -f $COMPOSE_FILE -f $COMPOSE_OVERRIDE logs -f openclaw-gateway"
+    echo "  Stop gateway:  docker compose -f $COMPOSE_FILE -f $COMPOSE_OVERRIDE down"
+    echo "  CLI commands:  docker compose -f $COMPOSE_FILE -f $COMPOSE_OVERRIDE run --rm openclaw-cli <command>"
+  else
+    echo "  View logs:     docker compose -f $COMPOSE_FILE logs -f openclaw-gateway"
+    echo "  Stop gateway:  docker compose -f $COMPOSE_FILE down"
+    echo "  CLI commands:  docker compose -f $COMPOSE_FILE run --rm openclaw-cli <command>"
+  fi
   echo ""
   echo -e "${BLUE}First-time Setup:${NC}"
-  echo "  1. Check channel status:  docker compose -f $COMPOSE_FILE run --rm openclaw-cli channels status"
-  echo "  2. Add a channel (e.g., Discord):"
-  echo "     docker compose -f $COMPOSE_FILE run --rm openclaw-cli channels add --channel discord --token <your-token>"
+  if [[ -f "$COMPOSE_OVERRIDE" ]]; then
+    echo "  1. Check channel status:  docker compose -f $COMPOSE_FILE -f $COMPOSE_OVERRIDE run --rm openclaw-cli channels status"
+    echo "  2. Add a channel (e.g., Discord):"
+    echo "     docker compose -f $COMPOSE_FILE -f $COMPOSE_OVERRIDE run --rm openclaw-cli channels add --channel discord --token <your-token>"
+  else
+    echo "  1. Check channel status:  docker compose -f $COMPOSE_FILE run --rm openclaw-cli channels status"
+    echo "  2. Add a channel (e.g., Discord):"
+    echo "     docker compose -f $COMPOSE_FILE run --rm openclaw-cli channels add --channel discord --token <your-token>"
+  fi
   echo ""
 }
 

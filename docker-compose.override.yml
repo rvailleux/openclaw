@@ -16,6 +16,10 @@ services:
       - OPENCLAW_EXEC_HOST=gateway
       - OPENCLAW_EXEC_SECURITY=allowlist
       - OPENCLAW_EXEC_ASK=on-miss
+      # Trello skill configuration
+      # Get your API key and token from: https://trello.com/app-key
+      - TRELLO_API_KEY=${TRELLO_API_KEY:-}
+      - TRELLO_TOKEN=${TRELLO_TOKEN:-}
     # Add extra tools commonly needed for exec operations
     # Note: Build with OPENCLAW_DOCKER_APT_PACKAGES to add more tools
 
@@ -27,3 +31,6 @@ services:
         OPENCLAW_DOCKER_APT_PACKAGES: "vim jq"
     environment:
       - EDITOR=/usr/bin/vim
+      # Trello skill configuration
+      - TRELLO_API_KEY=${TRELLO_API_KEY:-}
+      - TRELLO_TOKEN=${TRELLO_TOKEN:-}
