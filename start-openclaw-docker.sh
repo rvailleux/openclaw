@@ -373,11 +373,11 @@ verify_umans_config() {
 
   log_success "UMAN_API_KEY is configured (${umans_key}...)"
 
-  # Test Umans API connectivity
+  # Test Umans API connectivity (using key from container env)
   local api_test
-  api_test="$($COMPOSE_CMD exec -T openclaw-gateway curl -s -o /dev/null -w "%{http_code}" \
+  api_test="$($COMPOSE_CMD exec -T openclaw-gateway sh -c 'curl -s -o /dev/null -w "%{http_code}" \
     -H "Authorization: Bearer $UMAN_API_KEY" \
-    https://api.umans.ai/v1/models 2>/dev/null || echo "000")"
+    https://api.umans.ai/v1/models' 2>/dev/null || echo "000")"
 
   if [[ "$api_test" == "200" ]] || [[ "$api_test" == "404" ]]; then
     log_success "Umans API is reachable (HTTP $api_test)"
