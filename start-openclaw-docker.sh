@@ -360,6 +360,34 @@ start_gateway() {
   log_warn "Gateway health check timed out, but it may still be starting..."
 }
 
+verify_umans_config() {
+  log_info "Verifying Umans API configuration..."
+
+  local umans_key
+  umans_key="$($COMPOSE_CMD exec -T openclaw-gateway sh -c 'echo "$UMAN_API_KEY"' 2>/dev/null | head -c 20)"
+
+  if [[ -z "$umans_key" ]]; then
+    log_warn "UMAN_API_KEY not set in container"
+    return 1
+  fi
+
+  log_success "UMAN_API_KEY is configured (${umans_key}...)"
+
+  # Test Umans API connectivity
+  local api_test
+  api_test="$($COMPOSE_CMD exec -T openclaw-gateway curl -s -o /dev/null -w "%{http_code}" \
+    -H "Authorization: Bearer $UMAN_API_KEY" \
+    https://api.umans.ai/v1/models 2>/dev/null || echo "000")"
+
+  if [[ "$api_test" == "200" ]] || [[ "$api_test" == "404" ]]; then
+    log_success "Umans API is reachable (HTTP $api_test)"
+  else
+    log_warn "Umans API test returned HTTP $api_test (may need different endpoint)"
+  fi
+
+  return 0
+}
+
 print_access_info() {
   local server_ip
   server_ip="$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'your-server-ip')"
@@ -426,6 +454,7 @@ main() {
   ensure_rate_limiting_config
   fix_permissions
   start_gateway
+  verify_umans_config
   print_access_info
 }
 
