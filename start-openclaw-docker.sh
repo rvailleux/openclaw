@@ -270,6 +270,42 @@ ensure_tools_config() {
   log_success "Tools configured: profile=full, read, web_search, exec, trello, sessions, fs, fetch, and more"
 }
 
+ensure_rate_limiting_config() {
+  log_info "Configuring API rate limiting for Anthropic..."
+
+  # Limit concurrent requests to avoid rate limits
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set agents.defaults.maxConcurrent 2 >/dev/null 2>&1 || {
+    log_warn "Could not set maxConcurrent"
+  }
+
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set agents.defaults.subagents.maxConcurrent 2 >/dev/null 2>&1 || {
+    log_warn "Could not set subagents.maxConcurrent"
+  }
+
+  # Configure queue to batch messages and add debounce
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set messages.queue.mode collect >/dev/null 2>&1 || {
+    log_warn "Could not set queue mode"
+  }
+
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set messages.queue.debounceMs 2000 >/dev/null 2>&1 || {
+    log_warn "Could not set queue debounce"
+  }
+
+  log_success "Rate limiting configured: maxConcurrent=2, debounce=2s"
+}
+
 fix_permissions() {
   log_info "Fixing directory permissions..."
 
@@ -387,6 +423,7 @@ main() {
   ensure_skills_config
   ensure_search_config
   ensure_tools_config
+  ensure_rate_limiting_config
   fix_permissions
   start_gateway
   print_access_info

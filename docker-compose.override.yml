@@ -24,6 +24,8 @@ services:
       # Brave Search API key
       # Get your API key from: https://brave.com/search/api/
       - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+      # Umans API - https://app.umans.ai
+      - UMAN_API_KEY=${UMAN_API_KEY:-}
     # Add extra tools commonly needed for exec operations
     # Note: Build with OPENCLAW_DOCKER_APT_PACKAGES to add more tools
 
@@ -40,3 +42,5 @@ services:
       - TRELLO_TOKEN=${TRELLO_TOKEN:-}
       # Brave Search API key
       - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+      # Umans API - https://app.umans.ai
+      - UMAN_API_KEY=${UMAN_API_KEY:-}
