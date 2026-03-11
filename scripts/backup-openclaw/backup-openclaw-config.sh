@@ -5,9 +5,10 @@ set -euo pipefail
 # This allows restoring the same configuration on another environment
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BACKUP_DIR="${OPENCLAW_BACKUP_DIR:-$SCRIPT_DIR/openclaw-backup}"
-COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
-COMPOSE_OVERRIDE="$SCRIPT_DIR/docker-compose.override.yml"
+COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
+COMPOSE_OVERRIDE="$PROJECT_DIR/docker-compose.override.yml"
 
 # Colors
 GREEN='\033[0;32m'

@@ -123,3 +123,4 @@ dist/protocol.schema.json
 **/.stfolder/
 # OpenClaw backup directory (runtime config, do not commit)
 openclaw-backup/
+scripts/backup-openclaw/openclaw-backup/
