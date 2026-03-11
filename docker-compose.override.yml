@@ -11,15 +11,19 @@ services:
         OPENCLAW_DOCKER_APT_PACKAGES: "vim jq"
     environment:
       - EDITOR=/usr/bin/vim
-      # Exec tool configuration for Docker
-      # Host execution is used since sandbox is not available in standard Docker
+      # Exec tool configuration for Docker - FULL PERMISSIONS
+      # WARNING: This allows the agent to execute ANY command on the gateway host
+      # Only use in trusted/development environments
       - OPENCLAW_EXEC_HOST=gateway
-      - OPENCLAW_EXEC_SECURITY=allowlist
-      - OPENCLAW_EXEC_ASK=on-miss
+      - OPENCLAW_EXEC_SECURITY=full
+      - OPENCLAW_EXEC_ASK=never
       # Trello skill configuration
       # Get your API key and token from: https://trello.com/app-key
       - TRELLO_API_KEY=${TRELLO_API_KEY:-}
       - TRELLO_TOKEN=${TRELLO_TOKEN:-}
+      # Brave Search API key
+      # Get your API key from: https://brave.com/search/api/
+      - BRAVE_API_KEY=${BRAVE_API_KEY:-}
     # Add extra tools commonly needed for exec operations
     # Note: Build with OPENCLAW_DOCKER_APT_PACKAGES to add more tools
 
@@ -34,3 +38,5 @@ services:
       # Trello skill configuration
       - TRELLO_API_KEY=${TRELLO_API_KEY:-}
       - TRELLO_TOKEN=${TRELLO_TOKEN:-}
+      # Brave Search API key
+      - BRAVE_API_KEY=${BRAVE_API_KEY:-}

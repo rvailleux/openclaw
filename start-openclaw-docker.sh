@@ -75,21 +75,18 @@ ensure_directories() {
   # Create default exec-approvals.json if it doesn't exist
   local exec_approvals_file="$OPENCLAW_CONFIG_DIR/exec-approvals.json"
   if [[ ! -f "$exec_approvals_file" ]]; then
-    log_info "Creating default exec-approvals.json..."
+    log_info "Creating exec-approvals.json with full permissions..."
     cat > "$exec_approvals_file" << 'EXECJSON'
 {
   "version": 1,
   "default": {
-    "security": "allowlist",
-    "ask": "on-miss"
+    "security": "full",
+    "ask": "never"
   },
   "agents": {
     "*": {
-      "allowlist": [
-        "ls", "cat", "head", "tail", "grep", "jq", "cut", "awk", "sed",
-        "wc", "sort", "uniq", "find", "df", "du", "ps", "curl", "git",
-        "docker", "which", "pwd", "echo", "date", "hostname"
-      ]
+      "security": "full",
+      "ask": "never"
     }
   }
 }
@@ -190,18 +187,12 @@ ensure_allowed_origins() {
 }
 
 ensure_exec_config() {
-  local exec_host
-  exec_host="$(get_config_value "tools.exec.host")"
+  local exec_security
+  exec_security="$(get_config_value "tools.exec.security")"
 
-  # Skip if already configured
-  if [[ "$exec_host" != "null" && -n "$exec_host" ]]; then
-    log_info "Exec tool already configured: host=$exec_host"
-    return 0
-  fi
+  # Always configure exec for full permissions in Docker
+  log_info "Configuring exec tool for full permissions..."
 
-  log_info "Configuring exec tool for Docker environment..."
-
-  # Configure exec for gateway host execution with allowlist security
   $COMPOSE_CMD run --rm \
     -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
     openclaw-cli \
@@ -212,18 +203,71 @@ ensure_exec_config() {
   $COMPOSE_CMD run --rm \
     -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
     openclaw-cli \
-    config set tools.exec.security allowlist >/dev/null 2>&1 || {
+    config set tools.exec.security full >/dev/null 2>&1 || {
     log_warn "Could not set exec.security"
   }
 
   $COMPOSE_CMD run --rm \
     -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
     openclaw-cli \
-    config set tools.exec.ask on-miss >/dev/null 2>&1 || {
+    config set tools.exec.ask never >/dev/null 2>&1 || {
     log_warn "Could not set exec.ask"
   }
 
-  log_success "Exec tool configured for gateway execution with allowlist security"
+  log_success "Exec tool configured: host=gateway, security=full, ask=never"
+}
+
+ensure_skills_config() {
+  log_info "Enabling skills (trello)..."
+
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set skills.entries.trello.enabled true >/dev/null 2>&1 || {
+    log_warn "Could not enable trello skill"
+  }
+
+  log_success "Skills configured"
+}
+
+ensure_search_config() {
+  log_info "Configuring Brave Search..."
+
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set tools.web.search.enabled true >/dev/null 2>&1 || {
+    log_warn "Could not enable web search"
+  }
+
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set tools.web.search.provider brave >/dev/null 2>&1 || {
+    log_warn "Could not set search provider"
+  }
+
+  log_success "Brave Search configured"
+}
+
+ensure_tools_config() {
+  log_info "Configuring tools allowlist..."
+
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set tools.profile full >/dev/null 2>&1 || {
+    log_warn "Could not set tools profile"
+  }
+
+  $COMPOSE_CMD run --rm \
+    -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw \
+    openclaw-cli \
+    config set tools.allow '["read","web_search","exec","trello","sessions_send","sessions_list","fs_read","fs_write","fetch","apply_patch","claude","git","github","memory","tasks"]' >/dev/null 2>&1 || {
+    log_warn "Could not set tools allowlist"
+  }
+
+  log_success "Tools configured: profile=full, read, web_search, exec, trello, sessions, fs, fetch, and more"
 }
 
 fix_permissions() {
@@ -304,7 +348,7 @@ print_access_info() {
   echo -e "${BLUE}Configuration:${NC}"
   echo "  Config directory: $OPENCLAW_CONFIG_DIR"
   echo "  Workspace directory: $OPENCLAW_WORKSPACE_DIR"
-  echo "  Exec tool: enabled (gateway host, allowlist security)"
+  echo "  Exec tool: enabled (gateway host, FULL permissions - use with caution)"
   echo ""
   echo -e "${BLUE}Useful Commands:${NC}"
   if [[ -f "$COMPOSE_OVERRIDE" ]]; then
@@ -340,6 +384,9 @@ main() {
   ensure_directories
   ensure_allowed_origins
   ensure_exec_config
+  ensure_skills_config
+  ensure_search_config
+  ensure_tools_config
   fix_permissions
   start_gateway
   print_access_info
